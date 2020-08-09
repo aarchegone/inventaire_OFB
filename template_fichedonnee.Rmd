@@ -1,0 +1,141 @@
+---
+title: "Fiche de la donnée"
+geometry: "left=2.5cm,right=2.5cm,top=1cm,bottom=2cm"
+output:
+  pdf_document
+params:
+  n: NA # l'indice de la donnee dont on veut la fiche
+header-includes: 
+  # packages necessaires pour compiler en LaTeX
+  - \pagestyle{empty} # pas de numero de page
+  - \AtBeginDocument{\let\maketitle\relax} # pas de titre
+  - \usepackage{xcolor} # pour definir des couleurs
+  - \usepackage{booktabs} # pour les tableaux
+  - \usepackage{longtable} # pour les tableaux
+  - \usepackage{array} # pour les tableaux
+  - \usepackage{multirow} # pour les tableaux
+  - \usepackage{wrapfig} # pour les tableaux
+  - \usepackage{float} # pour les tableaux
+  - \usepackage{colortbl} # pour la couleur dans le tableau
+  - \usepackage{pdflscape} ## pour les tableaux
+  - \usepackage{tabu} # pour les tableaux
+  - \usepackage{threeparttable} # pour les tableaux
+  - \usepackage{threeparttablex} # pour les tableaux
+  - \usepackage[normalem]{ulem} # pour les tableaux
+  - \usepackage{makecell} # pour les tableaux
+fontsize: 12pt # grande taille de police
+---
+
+```{r setup, include=FALSE}
+library(here) ; library(rdrop2) ; library(shiny) # chargement des packages
+path <- here() # chemin actuel
+knitr::opts_chunk$set(echo = TRUE) # definit l'option echo = TRUE pour les chunks suivants
+date <- Sys.Date() # charge la date (jour, mois et annee)
+month <- c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+mois <- c("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre")
+date <- paste(format(date, format = "%d"), 
+          mois[format(date, format = "%B") == month],format(date, format = "%Y")) # le mois est en anglais, on le passe manuellement en francais
+                                                                            # pas possible de le faire autrement sur les serveurs Shinyapps
+
+path_image <- paste(here(), "/longlogo.png", sep = "")
+```
+
+*\textsf{Document téléchargé le `r date`}* ![](`r path_image`){height=80px} 
+
+
+***
+
+
+```{r data, include=FALSE}
+#token <- readRDS("droptoken.rds") ; drop_acc(dtoken = token)
+folder_dropbox <- "Inventaire_OFB"
+load_ress <- function() {
+  #drop_download(file.path(outputDir,"inventaire_tableur.csv"), overwrite = TRUE)
+  #data <- read.csv(file.path(path,"inventaire_tableur.csv"), header = T, colClasses = c(rep("character",12)))
+  ress <- drop_read_csv(file.path(folder_dropbox,"inventaire_tableur.csv"), header = T, colClasses = c(rep("character",19)))
+  return(ress)
+}
+ress <- load_ress()
+#ress <- read.csv(paste(path,"/inventaire_tableur.csv", sep=""), header = T, colClasses = c(rep("character",17)))
+
+colnames(ress)[c(6:8,10,14, 18, 19)] <- c("Thème Covadis","Mots-clés","Date de mise à jour", "Données brutes", "Autre   lien intéressant", "Internet Explorer", "Hauts-de-France") # sinon, pas d'espaces mais des points
+nlength <- dim(ress)[1] ; nlengthOFB <- dim(ress[which(ress$Organisme=="OFB"),])[1]
+
+paramsn <- 196#params$n
+nom_data <- ress$Nom[paramsn]
+       
+```
+
+\renewcommand{\arraystretch}{1.5}
+\definecolor{ceruleanblue}{rgb}{0.16, 0.32, 0.75}
+\definecolor{forestgreen}{rgb}{0.13, 0.55, 0.13}
+######
+
+**\textcolor{forestgreen}{La donnée « `r nom_data` » a les caractéristiques générales suivantes :}**
+
+
+```{r table, echo=FALSE}
+library(knitr) ; library(kableExtra)
+tab <- as.data.frame(cbind(t(ress[paramsn,c(1:9,12:14)])))
+#tab <- data.frame(rep(2,11))
+if(tab[12,1] == ""){tab <- tab[-12,]}
+
+kable(tab, col.names = "Information",  format = "latex", booktabs = T) %>%
+   kable_styling(latex_options = c("striped", "hold_position"), full_width = F) %>%
+   column_spec(1, bold = T, width = "4cm", color = "ceruleanblue")%>%
+   column_spec(2, width = "12cm") %>%
+   row_spec(0, bold = T)
+```
+
+```{r message OFB, echo=FALSE, results = 'asis'}
+testmessageOFB <- if(ress[paramsn, "Bancarisation"]!="" & ress[paramsn, "Hauts-de-France"]!=""){
+  "Les informations suivantes concernent les agents OFB (et plus particulièrement ceux des Hauts-de-France) :"
+  }else if(ress[paramsn, "Bancarisation"]!="" | ress[paramsn, "Hauts-de-France"]!=""){
+  "L'information suivante concerne les agents OFB (et plus particulièrement ceux des Hauts-de-France) :"
+}
+```
+
+######
+
+**\textcolor{forestgreen}{`r testmessageOFB`}**
+
+```{r table OFB, echo=FALSE, results = 'asis'}
+
+html_table_width <- function(kable_output, width){
+  width_html <- paste0(paste0('<col width="', width, '">'), collapse = "\n")
+  sub("<table>", paste0("<table>\n", width_html), kable_output)
+}
+if(ress[paramsn, "Bancarisation"]!="" | ress[paramsn, "Hauts-de-France"]!=""){
+          tab2 <- as.data.frame(cbind(t(ress[paramsn,c(15,19)])))
+          if(tab2["Bancarisation",1]== ""){tab2 <- tab2[-which(rownames(tab2)=="Bancarisation"),]
+          tab2 <- as.data.frame(tab2)}
+          if(tab2["Hauts-de-France",1] == ""){tab2 <- as.data.frame(tab2[-which(rownames(tab2)=="Hauts-de-France"),])}
+kable(tab2, col.names = "Information", format = "latex", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "hold_position"),
+                full_width = F) %>%
+  column_spec(1, bold = T, width = "4cm", color = "ceruleanblue")%>%
+  column_spec(2, width = "12cm")%>%
+  row_spec(0, bold = T)
+}
+```
+
+
+######
+
+**\textcolor{forestgreen}{Informations complémentaires :}**
+
+```{r dispo DB, echo=FALSE, results = 'asis'}
+dispodb <- if(ress[paramsn, 10]) 'disponibles'
+nondispodb <- if(ress[paramsn, 10]=="FALSE") 'non disponibles'
+```
+
+
+```{r dispo SIG, echo=FALSE, results = 'asis'}
+disposig<- if(ress[paramsn, 11]) 'disponible'
+nondisposig <- if(ress[paramsn, 11]=="FALSE") 'non disponible'
+```
+
+- **\textcolor{ceruleanblue}{Données brutes :}** `r dispodb` `r nondispodb`
+
+- **\textcolor{ceruleanblue}{Donnée SIG :}** `r disposig` `r nondisposig`
+
